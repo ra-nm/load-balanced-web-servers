@@ -1,0 +1,39 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "networkName": {
+            "value": "WebAppNetwork"
+        },
+        "secondOctet": {
+            "value": 25
+        },
+        "administrationIp": {
+            "value": "1.1.1.1"
+        },
+        "webApplicationData": {
+            "value": [
+                {
+                    "name": "IisApp",
+                    "publicFacingPorts": [
+                        "80",
+                        "443"
+                    ],
+                    "administrationPorts": [
+                        "3389"
+                    ]
+                },
+                {
+                    "name": "NginxApp",
+                    "publicFacingPorts": [
+                        "80",
+                        "443"
+                    ],
+                    "administrationPorts": [
+                        "22"
+                    ]
+                }
+            ]
+        }
+    }
+}

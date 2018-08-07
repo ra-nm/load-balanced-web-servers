@@ -1,0 +1,281 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "networkName": {
+            "type": "string",
+            "metadata": {
+                "description": "The name for the virtual network."
+            }
+        },
+        "secondOctet": {
+            "type": "int",
+            "maxValue": 255,
+            "minValue": 0,
+            "metadata": {
+                "description": "The second octet for the address space of the network.  This template creates a /16 network with the address space of 10.xx.0.0/16."
+            }
+        },
+        "administrationIp": {
+            "type": "string",
+            "metadata": {
+                "description": "The IP Address used to do administration on the servers in this network.  Port 3389 will be opened for Windows for Remote Desktop and port 22 for Linux for SSH."
+            }
+        },
+        "webApplicationData": {
+            "type": "array",
+            "defaultValue": [
+                {
+                    "name": "ApplicationOnIis",
+                    "publicFacingPorts": [
+                        "80",
+                        "443"
+                    ],
+                    "administrationPorts": [
+                        "3389"
+                    ]
+                },
+                {
+                    "name": "ApplicationOnNginx",
+                    "publicFacingPorts": [
+                        "80"
+                    ],
+                    "administrationPorts": [
+                        "22"
+                    ]
+                }
+            ],
+            "metadata": {
+                "description": "Array of objects representing the web applications hosted on this network.  See default value for the structure of this object."
+            }
+        }
+    },
+    "variables": {
+        "webNsgSecurityRulesTemplate": [
+            {
+                "name": "[concat('AllowWebTrafficFromInternetTo', parameters('webApplicationData')[0].name, 'WebAsg')]",
+                "properties": {
+                    "protocol": "TCP",
+                    "sourcePortRange": "*",
+                    "destinationPortRanges": "[parameters('webApplicationData')[0].publicFacingPorts]",
+                    "sourceAddressPrefix": "Internet",
+                    "destinationApplicationSecurityGroups": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', concat(parameters('webApplicationData')[0].name, 'WebAsg'))]"
+                        }
+                    ],
+                    "access": "Allow",
+                    "priority": 100,
+                    "direction": "Inbound"
+                }
+            },
+            {
+                "name": "[concat('AllowAdministrationTo', parameters('webApplicationData')[0].name, 'WebAsg')]",
+                "properties": {
+                    "protocol": "TCP",
+                    "sourcePortRange": "*",
+                    "destinationPortRanges": "[parameters('webApplicationData')[0].administrationPorts]",
+                    "sourceAddressPrefix": "[parameters('administrationIp')]",
+                    "destinationApplicationSecurityGroups": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', concat(parameters('webApplicationData')[0].name, 'WebAsg'))]"
+                        }
+                    ],
+                    "access": "Allow",
+                    "priority": 200,
+                    "direction": "Inbound"
+                }
+            },
+            {
+                "name": "[concat('AllowWebTrafficFromInternetTo', parameters('webApplicationData')[mod(1, length(parameters('webApplicationData')))].name, 'WebAsg')]",
+                "properties": {
+                    "protocol": "TCP",
+                    "sourcePortRange": "*",
+                    "destinationPortRanges": "[parameters('webApplicationData')[mod(1, length(parameters('webApplicationData')))].publicFacingPorts]",
+                    "sourceAddressPrefix": "Internet",
+                    "destinationApplicationSecurityGroups": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', concat(parameters('webApplicationData')[mod(1, length(parameters('webApplicationData')))].name, 'WebAsg'))]"
+                        }
+                    ],
+                    "access": "Allow",
+                    "priority": 101,
+                    "direction": "Inbound"
+                }
+            },
+            {
+                "name": "[concat('AllowAdministrationTo', parameters('webApplicationData')[mod(1, length(parameters('webApplicationData')))].name, 'WebAsg')]",
+                "properties": {
+                    "protocol": "TCP",
+                    "sourcePortRange": "*",
+                    "destinationPortRanges": "[parameters('webApplicationData')[mod(1, length(parameters('webApplicationData')))].administrationPorts]",
+                    "sourceAddressPrefix": "[parameters('administrationIp')]",
+                    "destinationApplicationSecurityGroups": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', concat(parameters('webApplicationData')[mod(1, length(parameters('webApplicationData')))].name, 'WebAsg'))]"
+                        }
+                    ],
+                    "access": "Allow",
+                    "priority": 201,
+                    "direction": "Inbound"
+                }
+            },
+            {
+                "name": "[concat('AllowWebTrafficFromInternetTo', parameters('webApplicationData')[mod(2, length(parameters('webApplicationData')))].name, 'WebAsg')]",
+                "properties": {
+                    "protocol": "TCP",
+                    "sourcePortRange": "*",
+                    "destinationPortRanges": "[parameters('webApplicationData')[mod(2, length(parameters('webApplicationData')))].publicFacingPorts]",
+                    "sourceAddressPrefix": "Internet",
+                    "destinationApplicationSecurityGroups": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', concat(parameters('webApplicationData')[mod(2, length(parameters('webApplicationData')))].name, 'WebAsg'))]"
+                        }
+                    ],
+                    "access": "Allow",
+                    "priority": 102,
+                    "direction": "Inbound"
+                }
+            },
+            {
+                "name": "[concat('AllowAdministrationTo', parameters('webApplicationData')[mod(2, length(parameters('webApplicationData')))].name, 'WebAsg')]",
+                "properties": {
+                    "protocol": "TCP",
+                    "sourcePortRange": "*",
+                    "destinationPortRanges": "[parameters('webApplicationData')[mod(2, length(parameters('webApplicationData')))].administrationPorts]",
+                    "sourceAddressPrefix": "[parameters('administrationIp')]",
+                    "destinationApplicationSecurityGroups": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', concat(parameters('webApplicationData')[mod(2, length(parameters('webApplicationData')))].name, 'WebAsg'))]"
+                        }
+                    ],
+                    "access": "Allow",
+                    "priority": 202,
+                    "direction": "Inbound"
+                }
+            },
+            {
+                "name": "[concat('AllowWebTrafficFromInternetTo', parameters('webApplicationData')[mod(3, length(parameters('webApplicationData')))].name, 'WebAsg')]",
+                "properties": {
+                    "protocol": "TCP",
+                    "sourcePortRange": "*",
+                    "destinationPortRanges": "[parameters('webApplicationData')[mod(3, length(parameters('webApplicationData')))].publicFacingPorts]",
+                    "sourceAddressPrefix": "Internet",
+                    "destinationApplicationSecurityGroups": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', concat(parameters('webApplicationData')[mod(3, length(parameters('webApplicationData')))].name, 'WebAsg'))]"
+                        }
+                    ],
+                    "access": "Allow",
+                    "priority": 103,
+                    "direction": "Inbound"
+                }
+            },
+            {
+                "name": "[concat('AllowAdministrationTo', parameters('webApplicationData')[mod(3, length(parameters('webApplicationData')))].name, 'WebAsg')]",
+                "properties": {
+                    "protocol": "TCP",
+                    "sourcePortRange": "*",
+                    "destinationPortRanges": "[parameters('webApplicationData')[mod(3, length(parameters('webApplicationData')))].administrationPorts]",
+                    "sourceAddressPrefix": "[parameters('administrationIp')]",
+                    "destinationApplicationSecurityGroups": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', concat(parameters('webApplicationData')[mod(3, length(parameters('webApplicationData')))].name, 'WebAsg'))]"
+                        }
+                    ],
+                    "access": "Allow",
+                    "priority": 203,
+                    "direction": "Inbound"
+                }
+            },
+            {
+                "name": "[concat('AllowWebTrafficFromInternetTo', parameters('webApplicationData')[mod(4, length(parameters('webApplicationData')))].name, 'WebAsg')]",
+                "properties": {
+                    "protocol": "TCP",
+                    "sourcePortRange": "*",
+                    "destinationPortRanges": "[parameters('webApplicationData')[mod(4, length(parameters('webApplicationData')))].publicFacingPorts]",
+                    "sourceAddressPrefix": "Internet",
+                    "destinationApplicationSecurityGroups": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', concat(parameters('webApplicationData')[mod(4, length(parameters('webApplicationData')))].name, 'WebAsg'))]"
+                        }
+                    ],
+                    "access": "Allow",
+                    "priority": 104,
+                    "direction": "Inbound"
+                }
+            },
+            {
+                "name": "[concat('AllowAdministrationTo', parameters('webApplicationData')[mod(4, length(parameters('webApplicationData')))].name, 'WebAsg')]",
+                "properties": {
+                    "protocol": "TCP",
+                    "sourcePortRange": "*",
+                    "destinationPortRanges": "[parameters('webApplicationData')[mod(4, length(parameters('webApplicationData')))].administrationPorts]",
+                    "sourceAddressPrefix": "[parameters('administrationIp')]",
+                    "destinationApplicationSecurityGroups": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/applicationSecurityGroups', concat(parameters('webApplicationData')[mod(4, length(parameters('webApplicationData')))].name, 'WebAsg'))]"
+                        }
+                    ],
+                    "access": "Allow",
+                    "priority": 204,
+                    "direction": "Inbound"
+                }
+            }
+        ]
+    },
+    "resources": [
+        {
+            "comments": "Application Security Groups for Web Applications",
+            "name": "[concat(parameters('webApplicationData')[copyIndex()].name, 'WebAsg')]",
+            "type": "Microsoft.Network/applicationSecurityGroups",
+            "apiVersion": "2017-10-01",
+            "location": "[resourceGroup().location]",
+            "copy": {
+                "name": "AsgCopy-Web",
+                "count": "[length(parameters('webApplicationData'))]"
+            }
+        },
+        {
+            "comments": "Network Security Group for Web Applications with security rules dynamically generated from the webApplicationData parameter.",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2017-10-01",
+            "name": "WebNsg",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "AsgCopy-Web"
+            ],
+            "properties": {
+                "securityRules": "[take(variables('webNsgSecurityRulesTemplate'), mul(length(parameters('webApplicationData')), 2))]"
+            }
+        },
+        {
+            "comments": "Virtual Network with a Web Subnet with a Network Security Group attached to it.",
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2017-10-01",
+            "name": "[parameters('networkName')]",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "WebNsg"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[concat('10.', parameters('secondOctet'), '.0.0/16')]"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "Web",
+                        "properties": {
+                            "addressPrefix": "[concat('10.', parameters('secondOctet'), '.10.0/24')]",
+                            "networkSecurityGroup": {
+                                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'WebNsg')]"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}
