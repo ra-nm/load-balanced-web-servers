@@ -1,0 +1,380 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "vmNamePrefix": {
+            "type": "string",
+            "maxLength": 13,
+            "metadata": {
+                "description": "The prefix of the vm name.  A number will be appended to the end of the name of each vm created."
+            }
+        },
+        "numberOfVms": {
+            "type": "int",
+            "maxValue": 5,
+            "minValue": 3
+        },
+        "networkResourceGroupName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the resource group that the network lives in."
+            }
+        },
+        "networkName": {
+            "type": "string",
+            "metadata": {
+                "description": "Network name."
+            }
+        },
+        "subnetName": {
+            "type": "string",
+            "metadata": {
+                "description": "Subnet name."
+            }
+        },
+        "applicationSecurityGroupName": {
+            "type": "string",
+            "metadata": {
+                "description": "Name of the application security group for this application in the Network Resource Group."
+            }
+        },
+        "virtualMachineSize": {
+            "type": "string",
+            "defaultValue": "Standard_B2S",
+            "metadata": {
+                "description": "The size of your VM."
+            },
+            "allowedValues": [
+                "Standard_B2S",
+                "Standard_B2MS"
+            ]
+        },
+        "osDiskSizeInGb": {
+            "type": "string",
+            "allowedValues": [
+                "32",
+                "64",
+                "128",
+                "256"
+            ],
+            "defaultValue": "128"
+        },
+        "administratorUserName": {
+            "type": "string",
+            "metadata": {
+                "description": "Administrator User Name."
+            }
+        },
+        "administratorPassword": {
+            "type": "securestring",
+            "metadata": {
+                "description": "Administrator Password."
+            }
+        },
+        "storageAccountType": {
+            "type": "string",
+            "allowedValues": [
+                "Standard_LRS",
+                "Standard_GRS",
+                "Premium_LRS"
+            ],
+            "defaultValue": "Standard_LRS",
+            "metadata": {
+                "description": "The type of storage to use for the OS managed disk."
+            }
+        },
+        "diagnosticsStorageAccountType": {
+            "type": "string",
+            "allowedValues": [
+                "Standard_LRS",
+                "Standard_GRS",
+                "Premium_LRS"
+            ],
+            "defaultValue": "Standard_LRS",
+            "metadata": {
+                "description": "The type of storage account to create for vm diagnostics."
+            }
+        },
+        "publicIpDomainNameLabel": {
+            "type": "string",
+            "metadata": {
+                "description": "Value to use as part of the IP address DNS name: <value>.<location>.cloudapp.azure.com"
+            }
+        },
+        "httpPort": {
+            "type": "int",
+            "minValue": 80,
+            "maxValue": 9999,
+            "defaultValue": 80
+        },
+        "httpsPort": {
+            "type": "int",
+            "minValue": 443,
+            "maxValue": 9999,
+            "defaultValue": 443
+        }
+    },
+    "variables": {
+        "availabilitySetName": "[concat(parameters('vmNamePrefix'), 'AvSet')]",
+        "loadBalancerName": "[concat(parameters('vmNamePrefix'), '-LB')]",
+        "publicIpAddressName": "[concat(parameters('vmNamePrefix'), '-LB-PublicIP')]",
+        "loadBalancerId": "[resourceId('Microsoft.Network/loadBalancers',variables('loadBalancerName'))]",
+        "frontEndIPConfigID": "[concat(variables('loadBalancerId'),'/frontendIPConfigurations/', variables('publicIpAddressName'))]",
+        "loadBalancerBackendAddressPoolName": "WebPool",
+        "loadBalancerBackendAddressPoolId": "[concat(variables('loadBalancerId'),'/backendAddressPools/', variables('loadBalancerBackendAddressPoolName'))]",
+        "virtualNetworkId": "[resourceId(parameters('networkResourceGroupName'), 'Microsoft.Network/virtualNetworks',parameters('networkName'))]",
+        "subnetId": "[concat(variables('virtualNetworkId'), '/subnets/', parameters('subnetName'))]",
+        "diagnosticsStorageAccountName": "[toLower(concat(parameters('vmNamePrefix'), 'diag'))]"
+    },
+    "resources": [
+        {
+            "apiVersion": "2018-06-01",
+            "type": "Microsoft.Compute/availabilitySets",
+            "name": "[variables('availabilitySetName')]",
+            "sku": {
+                "name": "Aligned"
+            },
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "platformFaultDomainCount": 3,
+                "platformUpdateDomainCount": 3
+            }
+        },
+        {
+            "apiVersion": "2017-10-01",
+            "name": "[variables('loadBalancerName')]",
+            "type": "Microsoft.Network/loadBalancers",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIpAddressName'))]"
+            ],
+            "properties": {
+                "frontendIPConfigurations": [
+                    {
+                        "name": "[variables('publicIpAddressName')]",
+                        "properties": {
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIpAddressName'))]"
+                            }
+                        }
+                    }
+                ],
+                "backendAddressPools": [
+                    {
+                        "name": "[variables('loadBalancerBackendAddressPoolName')]"
+                    }
+                ],
+                "loadBalancingRules": [
+                    {
+                        "name": "Http",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[variables('frontEndIPConfigID')]"
+                            },
+                            "backendAddressPool": {
+                                "id": "[variables('loadBalancerBackendAddressPoolId')]"
+                            },
+                            "protocol": "Tcp",
+                            "frontendPort": "[parameters('httpPort')]",
+                            "backendPort": "[parameters('httpPort')]",
+                            "probe": {
+                                "id": "[concat(variables('loadBalancerId'),'/probes/HttpProbe')]"
+                            }
+                        }
+                    },
+                    {
+                        "name": "Https",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[variables('frontEndIPConfigID')]"
+                            },
+                            "backendAddressPool": {
+                                "id": "[variables('loadBalancerBackendAddressPoolId')]"
+                            },
+                            "protocol": "Tcp",
+                            "frontendPort": "[parameters('httpsPort')]",
+                            "backendPort": "[parameters('httpsPort')]",
+                            "probe": {
+                                "id": "[concat(variables('loadBalancerId'),'/probes/HttpsProbe')]"
+                            }
+                        }
+                    }
+                ],
+                "probes": [
+                    {
+                        "name": "HttpProbe",
+                        "properties": {
+                            "protocol": "Tcp",
+                            "port": "[parameters('httpPort')]",
+                            "intervalInSeconds": 5,
+                            "numberOfProbes": 2
+                        }
+                    },
+                    {
+                        "name": "HttpsProbe",
+                        "properties": {
+                            "protocol": "Tcp",
+                            "port": "[parameters('httpsPort')]",
+                            "intervalInSeconds": 5,
+                            "numberOfProbes": 2
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "apiVersion": "2017-10-01",
+            "type": "Microsoft.Network/publicIPAddresses",
+            "name": "[variables('publicIpAddressName')]",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "publicIPAllocationMethod": "Dynamic",
+                "dnsSettings": {
+                    "domainNameLabel": "[parameters('publicIpDomainNameLabel')]"
+                }
+            }
+        },
+        {
+            "name": "[variables('diagnosticsStorageAccountName')]",
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2018-02-01",
+            "location": "[resourceGroup().location]",
+            "sku": {
+                "name": "[parameters('diagnosticsStorageAccountType')]"
+            },
+            "kind": "StorageV2",
+            "properties": {
+                "encryption": {
+                    "keySource": "Microsoft.Storage",
+                    "services": {
+                        "blob": {
+                            "enabled": true
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "name": "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'), '-nic')]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2017-10-01",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[variables('loadBalancerName')]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig",
+                        "properties": {
+                            "subnet": {
+                                "id": "[variables('subnetId')]"
+                            },
+                            "privateIPAllocationMethod": "Dynamic",
+                            "loadBalancerBackendAddressPools": [
+                                {
+                                    "id": "[variables('loadBalancerBackendAddressPoolId')]"
+                                }
+                            ],
+                            "applicationSecurityGroups": [
+                                {
+                                    "id": "[resourceId(parameters('networkResourceGroupName'), 'Microsoft.Network/applicationSecurityGroups', parameters('applicationSecurityGroupName'))]"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "copy": {
+                "name": "nicLoop",
+                "count": "[parameters('numberOfVms')]"
+            }
+        },
+        {
+            "name": "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'))]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2018-06-01",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'), '-nic')]",
+                "[variables('diagnosticsStorageAccountName')]",
+                "[variables('availabilitySetName')]"
+            ],
+            "properties": {
+                "availabilitySet": {
+                    "id": "[resourceId('Microsoft.Compute/availabilitySets',variables('availabilitySetName'))]"
+                },
+                "osProfile": {
+                    "computerName": "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'))]",
+                    "adminUsername": "[parameters('administratorUserName')]",
+                    "adminPassword": "[parameters('administratorPassword')]",
+                    "windowsConfiguration": {
+                        "provisionVmAgent": true,
+                        "enableAutomaticUpdates": true
+                    }
+                },
+                "hardwareProfile": {
+                    "vmSize": "[parameters('virtualMachineSize')]"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "MicrosoftWindowsServer",
+                        "offer": "WindowsServer",
+                        "sku": "2016-Datacenter",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "caching": "ReadOnly",
+                        "createOption": "FromImage",
+                        "name": "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'), '-OsDisk')]",
+                        "managedDisk": {
+                            "storageAccountType": "[parameters('storageAccountType')]"
+                        },
+                        "diskSizeGB": "[parameters('osDiskSizeInGb')]"
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'), '-nic'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true,
+                        "storageUri": "[reference(resourceId('Microsoft.Storage/storageAccounts', variables('diagnosticsStorageAccountName')), '2015-06-15').primaryEndpoints['blob']]"
+                    }
+                }
+            },
+            "copy": {
+                "name": "computeLoop",
+                "count": "[parameters('numberOfVms')]"
+            }
+        },
+        {
+            "name": "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'),'/IisDsc')]",
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2018-06-01",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'))]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.Powershell",
+                "type": "DSC",
+                "typeHandlerVersion": "2.76",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "ModulesUrl": "https://github.com/ra-nm/load-balanced-web-servers/blob/master/web/DSC/iisserver.zip?raw=true",
+                    "ConfigurationFunction": "iisserver.ps1\\IisServer"
+                }
+            },
+            "copy": {
+                "name": "dscLoop",
+                "count": "[parameters('numberOfVms')]"
+            }
+        }
+    ],
+    "outputs": {}
+}
