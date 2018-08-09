@@ -2,6 +2,22 @@
     "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
+        "costCenter": {
+            "type": "string",
+            "metadata": {
+                "description": "The value for the cost center tag on each resource."
+            }
+        },
+        "webServerType": {
+            "type": "string",
+            "allowedValues": [
+                "iis",
+                "nginx"
+            ],
+            "metadata": {
+                "description": "The type of web server to deploy."
+            }
+        },
         "vmNamePrefix": {
             "type": "string",
             "maxLength": 13,
@@ -124,13 +140,34 @@
         "loadBalancerBackendAddressPoolId": "[concat(variables('loadBalancerId'),'/backendAddressPools/', variables('loadBalancerBackendAddressPoolName'))]",
         "virtualNetworkId": "[resourceId(parameters('networkResourceGroupName'), 'Microsoft.Network/virtualNetworks',parameters('networkName'))]",
         "subnetId": "[concat(variables('virtualNetworkId'), '/subnets/', parameters('subnetName'))]",
-        "diagnosticsStorageAccountName": "[toLower(concat(parameters('vmNamePrefix'), 'diag'))]"
+        "diagnosticsStorageAccountName": "[toLower(concat(parameters('vmNamePrefix'), 'diag'))]",
+        "osProfileConfigurationName": {
+            "iis": "windowsConfiguration",
+            "nginx": "linuxConfiguration"
+        },
+        "imageReference": {
+            "iis": {
+                "publisher": "MicrosoftWindowsServer",
+                "offer": "WindowsServer",
+                "sku": "2016-Datacenter",
+                "version": "latest"
+            },
+            "nginx": {
+                "publisher": "Canonical",
+                "offer": "UbuntuServer",
+                "sku": "16.04-LTS",
+                "version": "latest"
+            }
+        }
     },
     "resources": [
         {
             "apiVersion": "2018-06-01",
             "type": "Microsoft.Compute/availabilitySets",
             "name": "[variables('availabilitySetName')]",
+            "tags": {
+                "Cost Center": "[parameters('costCenter')]"
+            },
             "sku": {
                 "name": "Aligned"
             },
@@ -144,6 +181,9 @@
             "apiVersion": "2017-10-01",
             "name": "[variables('loadBalancerName')]",
             "type": "Microsoft.Network/loadBalancers",
+            "tags": {
+                "Cost Center": "[parameters('costCenter')]"
+            },
             "location": "[resourceGroup().location]",
             "dependsOn": [
                 "[concat('Microsoft.Network/publicIPAddresses/', variables('publicIpAddressName'))]"
@@ -226,6 +266,9 @@
             "apiVersion": "2017-10-01",
             "type": "Microsoft.Network/publicIPAddresses",
             "name": "[variables('publicIpAddressName')]",
+            "tags": {
+                "Cost Center": "[parameters('costCenter')]"
+            },
             "location": "[resourceGroup().location]",
             "properties": {
                 "publicIPAllocationMethod": "Dynamic",
@@ -237,6 +280,9 @@
         {
             "name": "[variables('diagnosticsStorageAccountName')]",
             "type": "Microsoft.Storage/storageAccounts",
+            "tags": {
+                "Cost Center": "[parameters('costCenter')]"
+            },
             "apiVersion": "2018-02-01",
             "location": "[resourceGroup().location]",
             "sku": {
@@ -257,6 +303,9 @@
         {
             "name": "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'), '-nic')]",
             "type": "Microsoft.Network/networkInterfaces",
+            "tags": {
+                "Cost Center": "[parameters('costCenter')]"
+            },
             "apiVersion": "2017-10-01",
             "location": "[resourceGroup().location]",
             "dependsOn": [
@@ -293,6 +342,9 @@
         {
             "name": "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'))]",
             "type": "Microsoft.Compute/virtualMachines",
+            "tags": {
+                "Cost Center": "[parameters('costCenter')]"
+            },
             "apiVersion": "2018-06-01",
             "location": "[resourceGroup().location]",
             "dependsOn": [
@@ -308,21 +360,15 @@
                     "computerName": "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'))]",
                     "adminUsername": "[parameters('administratorUserName')]",
                     "adminPassword": "[parameters('administratorPassword')]",
-                    "windowsConfiguration": {
-                        "provisionVmAgent": true,
-                        "enableAutomaticUpdates": true
+                    "[variables('osProfileConfigurationName')[parameters('webServerType')]]": {
+                        "provisionVmAgent": true
                     }
                 },
                 "hardwareProfile": {
                     "vmSize": "[parameters('virtualMachineSize')]"
                 },
                 "storageProfile": {
-                    "imageReference": {
-                        "publisher": "MicrosoftWindowsServer",
-                        "offer": "WindowsServer",
-                        "sku": "2016-Datacenter",
-                        "version": "latest"
-                    },
+                    "imageReference": "[variables('imageReference')[parameters('webServerType')]]",
                     "osDisk": {
                         "caching": "ReadOnly",
                         "createOption": "FromImage",
@@ -354,7 +400,11 @@
         },
         {
             "name": "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'),'/IisDsc')]",
+            "condition": "[equals(parameters('webServerType'), 'iis')]",
             "type": "Microsoft.Compute/virtualMachines/extensions",
+            "tags": {
+                "Cost Center": "[parameters('costCenter')]"
+            },
             "apiVersion": "2018-06-01",
             "location": "[resourceGroup().location]",
             "dependsOn": [
@@ -372,6 +422,32 @@
             },
             "copy": {
                 "name": "dscLoop",
+                "count": "[parameters('numberOfVms')]"
+            }
+        },
+        {
+            "name": "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'),'/NginxInstall')]",
+            "condition": "[equals(parameters('webServerType'), 'nginx')]",
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "tags": {
+                "Cost Center": "[parameters('costCenter')]"
+            },
+            "apiVersion": "2018-06-01",
+            "location": "[resourceGroup().location]",
+            "dependsOn": [
+                "[concat(parameters('vmNamePrefix'), padLeft(copyIndex(), 2, '0'))]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.Azure.Extensions",
+                "type": "CustomScript",
+                "typeHandlerVersion": "2.0",
+                "autoUpgradeMinorVersion": true,
+                "protectedSettings": {
+                    "commandToExecute": "apt-get -y update && apt-get -y install nginx"
+                }
+            },
+            "copy": {
+                "name": "nginxLoop",
                 "count": "[parameters('numberOfVms')]"
             }
         }

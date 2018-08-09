@@ -1,0 +1,42 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "costCenter": {
+            "value": "Marketing"
+        },
+        "webServerType": {
+            "value": "iis"
+        },
+        "vmNamePrefix": {
+            "value": "IssApp"
+        },
+        "numberOfVms": {
+            "value": 3
+        },
+        "networkResourceGroupName": {
+            "value": "RobNetworkRG"
+        },
+        "networkName": {
+            "value": "WebAppNetwork"
+        },
+        "subnetName": {
+            "value": "Web"
+        },
+        "applicationSecurityGroupName": {
+            "value": "IisAppWebAsg"
+        },
+        "virtualMachineSize": {
+            "value": "Standard_B2S"
+        },
+        "administratorUserName": {
+            "value": "RobAdmin"
+        },
+        "administratorPassword": {
+            "value": "Developer@123"
+        },
+        "publicIpDomainNameLabel": {
+            "value": "robiisapp"
+        }
+    }
+}

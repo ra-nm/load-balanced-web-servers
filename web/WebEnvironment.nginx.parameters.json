@@ -2,8 +2,14 @@
     "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
+        "costCenter": {
+            "value": "Marketing"
+        },
+        "webServerType": {
+            "value": "nginx"
+        },
         "vmNamePrefix": {
-            "value": "IssApp"
+            "value": "NginxApp"
         },
         "numberOfVms": {
             "value": 3
@@ -18,7 +24,7 @@
             "value": "Web"
         },
         "applicationSecurityGroupName": {
-            "value": "IisAppWebAsg"
+            "value": "NginxAppWebAsg"
         },
         "virtualMachineSize": {
             "value": "Standard_B2S"
@@ -30,7 +36,7 @@
             "value": "Developer@123"
         },
         "publicIpDomainNameLabel": {
-            "value": "robiisapp"
+            "value": "robnginxapp"
         }
     }
 }
