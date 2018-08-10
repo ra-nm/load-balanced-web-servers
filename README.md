@@ -24,7 +24,7 @@ az login
 |networkName|string|The name for the virtual network.|
 |secondOctet|int|The second octet for the address space of the network.  This template creates a /16 network with the address space of 10.xx.0.0/16.|
 |administrationIp|string|The IP Address used to do administration on the servers in this network.  You specify which port should be open for each application in the webAppicationData parameter|
-|webApplicationData|array|Array of objects representing the web applications hosted on this network.  See default value for the structure of this object.|
+|webApplicationData|array|Array of objects representing the web applications hosted on this network.|
 
 webApplicationData parameter format:
 
