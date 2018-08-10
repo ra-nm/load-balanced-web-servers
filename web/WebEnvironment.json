@@ -28,7 +28,10 @@
         "numberOfVms": {
             "type": "int",
             "maxValue": 5,
-            "minValue": 3
+            "minValue": 3,
+            "metadata": {
+                "description": "The number of VMs to be deployed."
+            }
         },
         "networkResourceGroupName": {
             "type": "string",
@@ -39,13 +42,13 @@
         "networkName": {
             "type": "string",
             "metadata": {
-                "description": "Network name."
+                "description": "Name of the network the VMs will be deployed to."
             }
         },
         "subnetName": {
             "type": "string",
             "metadata": {
-                "description": "Subnet name."
+                "description": "Name of the subnet the VMs will be deployed to."
             }
         },
         "applicationSecurityGroupName": {
@@ -58,7 +61,7 @@
             "type": "string",
             "defaultValue": "Standard_B2S",
             "metadata": {
-                "description": "The size of your VM."
+                "description": "The size of VMs that will be deployed."
             },
             "allowedValues": [
                 "Standard_B2S",
@@ -73,18 +76,21 @@
                 "128",
                 "256"
             ],
-            "defaultValue": "128"
+            "defaultValue": "128",
+            "metadata": {
+                "description": "The size of the operating system disk."
+            }
         },
         "administratorUserName": {
             "type": "string",
             "metadata": {
-                "description": "Administrator User Name."
+                "description": "Administrator User Name for the VMs."
             }
         },
         "administratorPassword": {
             "type": "securestring",
             "metadata": {
-                "description": "Administrator Password."
+                "description": "Administrator Password for the VMs."
             }
         },
         "storageAccountType": {
@@ -121,13 +127,19 @@
             "type": "int",
             "minValue": 80,
             "maxValue": 9999,
-            "defaultValue": 80
+            "defaultValue": 80,
+            "metadata": {
+                "description": "The port number the web application will use for http traffic."
+            }
         },
         "httpsPort": {
             "type": "int",
             "minValue": 443,
             "maxValue": 9999,
-            "defaultValue": 443
+            "defaultValue": 443,
+            "metadata": {
+                "description": "The port number the web application will use for https traffic."
+            }
         }
     },
     "variables": {

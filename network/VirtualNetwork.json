@@ -25,7 +25,7 @@
         "administrationIp": {
             "type": "string",
             "metadata": {
-                "description": "The IP Address used to do administration on the servers in this network.  Port 3389 will be opened for Windows for Remote Desktop and port 22 for Linux for SSH."
+                "description": "The IP Address used to do administration on the servers in this network.  You specify which port should be open for each application in the webAppicationData parameter."
             }
         },
         "webApplicationData": {
