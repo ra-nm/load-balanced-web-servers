@@ -71,10 +71,10 @@ To deploy the template, run a command similar to the following from the root of 
 
 Deploying a key vault is an optional step but can be helpful to you by securely storing the administrator password for your VMs.  The administrator password secret can be referenced in your ARM Template Parameter file so you don't need to check it into source control.
 
-To deploy the key vault, update the parameters at the top of the ```vault.sh``` file in the vault folder and run the following command from the root of this repo:
+To deploy the key vault and a randomly generated secret, run a script similar to the following at the root of this repo:
 
 ```
-./vault/vault.sh
+./vault/vault.sh -r 'VaultRG' -l 'eastus' -n 'RawePasswordVault' -s 'AdminPassword' -c 'Marketing'
 ```
 
 ## Load Balanced Web Environment
