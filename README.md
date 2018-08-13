@@ -1,6 +1,6 @@
 # Load Balanced Web Servers in Azure
 
-This repo contains Azure Resource Manager Templates to deploy a load balanced web enviornment using IIS or NGINX.
+This repo contains Azure Resource Manager Templates to deploy a load balanced web environment using IIS or NGINX.
 
 To get started, you will need to make sure you have an Azure Account and have Azure CLI installed on your machine.  The scripts in this repo were developed on a Windows machine with the Linux Subsystem installed (Ubuntu 18.04), but they could be run on any machine with Azure CLI installed.
 
@@ -56,7 +56,7 @@ webApplicationData parameter format:
 
 * Inbound traffic from the VirtualNetwork is denied by default.
 * The publicFacingPorts from the webApplicationData parameter will be opened from the Internet to the Application Secruity Group for the web application.
-* The administrationPorts  from the webApplicationData parameter will be opened from the IP specified in the administrationIp parameter to the Application Secruity Group for the web application.
+* The administrationPorts  from the webApplicationData parameter will be opened from the IP specified in the administrationIp parameter to the Application Security Group for the web application.
 * All traffic will be allowed within an Application Security Group.
 
 ### Deployment
